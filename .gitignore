@@ -1,0 +1,33 @@
+cat > .gitignore << 'EOF'
+# Environment
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual env (uv manages this automatically)
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Reports & Logs
+reports/
+logs/
+allure-results/
+allure-report/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# pytest
+.pytest_cache/
+EOF
