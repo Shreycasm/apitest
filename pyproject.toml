@@ -9,13 +9,13 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "structlog>=25.5.0",
+    "jsonschema>=4.26.0",
 ]
 
 [dependency-groups]
 test = [
     "allure-pytest>=2.16.0",
     "faker>=40.19.1",
-    "jsonschema>=4.26.0",
     "pytest>=9.0.3",
     "pytest-rerunfailures>=16.3",
     "pytest-xdist>=3.8.0",
