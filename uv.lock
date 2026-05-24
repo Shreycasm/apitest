@@ -355,6 +355,7 @@ name = "razorpay"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -366,7 +367,6 @@ dependencies = [
 test = [
     { name = "allure-pytest" },
     { name = "faker" },
-    { name = "jsonschema" },
     { name = "pytest" },
     { name = "pytest-rerunfailures" },
     { name = "pytest-xdist" },
@@ -374,6 +374,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
@@ -385,7 +386,6 @@ requires-dist = [
 test = [
     { name = "allure-pytest", specifier = ">=2.16.0" },
     { name = "faker", specifier = ">=40.19.1" },
-    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-rerunfailures", specifier = ">=16.3" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
