@@ -79,16 +79,16 @@ jobs:
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
         run: |
           uv run python -c "
-          from src.razorpay_automation.config.settings import settings
+          from src.razorpay.config.settings import settings
           print(f'✅ Settings loaded: env={settings.environment}')
           "
 
       - name: Validate imports
         run: |
           uv run python -c "
-          from src.razorpay_automation.api import OrdersAPI, PaymentsAPI, RefundsAPI
-          from src.razorpay_automation.models import CreateOrderRequest, OrderResponse
-          from src.razorpay_automation.utils import logger, SchemaValidator
+          from src.razorpay.api import OrdersAPI, PaymentsAPI, RefundsAPI
+          from src.razorpay.models import CreateOrderRequest, OrderResponse
+          from src.razorpay.utils import logger, SchemaValidator
           print('✅ All imports valid')
           "
 
