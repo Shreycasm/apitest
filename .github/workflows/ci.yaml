@@ -1,0 +1,294 @@
+name: Razorpay API Tests
+
+# ──────────────────────────────────────
+# WHEN to run this pipeline
+# ──────────────────────────────────────
+on:
+  # Run on every push to these branches
+  push:
+    branches:
+      - main
+      - develop
+
+  # Run on every PR targeting these branches
+  pull_request:
+    branches:
+      - main
+      - develop
+
+  # Manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: "Which tests to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - smoke
+          - regression
+          - orders
+          - negative
+
+  # Scheduled run (every day at 6 AM UTC)
+  schedule:
+    - cron: "0 6 * * *"
+
+# ──────────────────────────────────────
+# ENVIRONMENT VARIABLES
+# Available to all jobs
+# ──────────────────────────────────────
+env:
+  PYTHON_VERSION: "3.13"
+  UV_VERSION: "latest"
+
+# ──────────────────────────────────────
+# JOBS
+# ──────────────────────────────────────
+jobs:
+
+  # ════════════════════════════════════
+  # JOB 1: Lint & Validate
+  # ════════════════════════════════════
+  lint:
+    name: "🔍 Lint & Validate"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Validate pyproject.toml
+        run: uv run python -c "import tomllib; tomllib.load(open('pyproject.toml', 'rb')); print('✅ pyproject.toml valid')"
+
+      - name: Validate settings load
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+        run: |
+          uv run python -c "
+          from src.razorpay_automation.config.settings import settings
+          print(f'✅ Settings loaded: env={settings.environment}')
+          "
+
+      - name: Validate imports
+        run: |
+          uv run python -c "
+          from src.razorpay_automation.api import OrdersAPI, PaymentsAPI, RefundsAPI
+          from src.razorpay_automation.models import CreateOrderRequest, OrderResponse
+          from src.razorpay_automation.utils import logger, SchemaValidator
+          print('✅ All imports valid')
+          "
+
+      - name: Collect tests (dry run)
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+        run: |
+          uv run pytest --collect-only -q
+          echo "✅ All tests collected"
+
+  # ════════════════════════════════════
+  # JOB 2: Smoke Tests
+  # Fast feedback - runs first
+  # ════════════════════════════════════
+  smoke-tests:
+    name: "💨 Smoke Tests"
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run smoke tests
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          ENVIRONMENT: staging
+        run: |
+          uv run pytest -v -m smoke \
+            --reruns 2 \
+            --reruns-delay 2 \
+            --alluredir=allure-results/smoke \
+            --tb=short
+
+      - name: Upload smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: allure-results/smoke
+          retention-days: 30
+
+  # ════════════════════════════════════
+  # JOB 3: Full Test Suite (Parallel)
+  # ════════════════════════════════════
+  full-tests:
+    name: "🧪 Full Test Suite"
+    runs-on: ubuntu-latest
+    needs: smoke-tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test-group:
+          - name: "orders"
+            marker: "orders"
+            path: "tests/orders/"
+          - name: "negative"
+            marker: "negative"
+            path: "tests/"
+          - name: "schema"
+            marker: "regression"
+            path: "tests/"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ${{ matrix.test-group.name }} tests
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          ENVIRONMENT: staging
+        run: |
+          uv run pytest ${{ matrix.test-group.path }} \
+            -v \
+            -m "${{ matrix.test-group.marker }}" \
+            -n auto \
+            --reruns 2 \
+            --reruns-delay 2 \
+            --alluredir=allure-results/${{ matrix.test-group.name }} \
+            --tb=short
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-group.name }}
+          path: allure-results/${{ matrix.test-group.name }}
+          retention-days: 30
+
+  # ════════════════════════════════════
+  # JOB 4: Generate Allure Report
+  # ════════════════════════════════════
+  report:
+    name: "📊 Generate Report"
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, full-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: allure-results
+          merge-multiple: true
+
+      - name: List downloaded results
+        run: |
+          echo "Downloaded artifacts:"
+          find allure-results -type f | head -50
+
+      - name: Generate environment.properties
+        run: |
+          mkdir -p allure-results
+          cat > allure-results/environment.properties << EOF
+          Environment=staging
+          Base.URL=https://api.razorpay.com/v1
+          Python.Version=${{ env.PYTHON_VERSION }}
+          Framework=razorpay-automation/1.0.0
+          Runner=GitHub Actions
+          Branch=${{ github.ref_name }}
+          Commit=${{ github.sha }}
+          Run.ID=${{ github.run_id }}
+          EOF
+
+      - name: Copy categories
+        run: |
+          cp test_data/allure_categories.json allure-results/categories.json || true
+
+      - name: Install Allure CLI
+        run: |
+          curl -o allure-2.30.0.tgz -OLs https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.30.0/allure-commandline-2.30.0.tgz
+          tar -xzf allure-2.30.0.tgz
+          echo "$PWD/allure-2.30.0/bin" >> $GITHUB_PATH
+
+      - name: Generate Allure report
+        run: |
+          allure generate allure-results --clean -o allure-report
+
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+          retention-days: 30
+
+  # ════════════════════════════════════
+  # JOB 5: Post Results Summary
+  # ════════════════════════════════════
+  summary:
+    name: "📋 Test Summary"
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, full-tests]
+    if: always()
+
+    steps:
+      - name: Post summary
+        run: |
+          echo "## 🧪 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Runner | ${{ runner.os }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | ${{ env.PYTHON_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Full Tests | ${{ needs.full-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Download **allure-report** artifact for detailed HTML report" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,42 @@
+[
+    {
+        "name": "API Schema Failures",
+        "description": "Response structure doesn't match expected schema",
+        "matchedStatuses": [
+            "failed"
+        ],
+        "messageRegex": ".*SchemaValidationError.*"
+    },
+    {
+        "name": "Authentication Failures",
+        "description": "API key or auth issues",
+        "matchedStatuses": [
+            "failed"
+        ],
+        "messageRegex": ".*401.*|.*Unauthorized.*"
+    },
+    {
+        "name": "Network Failures",
+        "description": "Connection or timeout errors",
+        "matchedStatuses": [
+            "broken"
+        ],
+        "messageRegex": ".*ConnectionError.*|.*Timeout.*"
+    },
+    {
+        "name": "Bad Request",
+        "description": "400 errors from API",
+        "matchedStatuses": [
+            "failed"
+        ],
+        "messageRegex": ".*400.*|.*BAD_REQUEST.*"
+    },
+    {
+        "name": "Assertion Failures",
+        "description": "Test assertion did not match",
+        "matchedStatuses": [
+            "failed"
+        ],
+        "messageRegex": ".*AssertionError.*"
+    }
+]

@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Razorpay Order List Response",
+    "description": "Schema for list orders collection response",
+    "type": "object",
+    "required": [
+        "entity",
+        "count",
+        "items"
+    ],
+    "properties": {
+        "entity": {
+            "type": "string",
+            "const": "collection",
+            "description": "Always 'collection' for list endpoints"
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of items returned"
+        },
+        "items": {
+            "type": "array",
+            "items": {
+                "$ref": "order_schema.json"
+            },
+            "description": "Array of order objects"
+        }
+    },
+    "additionalProperties": true
+}

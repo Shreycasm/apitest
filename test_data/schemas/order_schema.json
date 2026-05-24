@@ -1,0 +1,108 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Razorpay Order Response",
+    "description": "Schema for single order response from Razorpay API",
+    "type": "object",
+    "required": [
+        "id",
+        "entity",
+        "amount",
+        "amount_paid",
+        "amount_due",
+        "currency",
+        "status",
+        "attempts",
+        "created_at"
+    ],
+    "properties": {
+        "id": {
+            "type": "string",
+            "pattern": "^order_[A-Za-z0-9]+$",
+            "description": "Order ID, always starts with order_"
+        },
+        "entity": {
+            "type": "string",
+            "const": "order",
+            "description": "Always 'order' for this endpoint"
+        },
+        "amount": {
+            "type": "integer",
+            "minimum": 100,
+            "description": "Amount in paise, minimum ₹1"
+        },
+        "amount_paid": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0,
+            "description": "Amount paid so far"
+        },
+        "amount_due": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Amount remaining"
+        },
+        "currency": {
+            "type": "string",
+            "enum": [
+                "INR",
+                "USD",
+                "EUR",
+                "SGD",
+                "AED"
+            ],
+            "description": "ISO currency code"
+        },
+        "receipt": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 40,
+            "description": "Receipt number, optional"
+        },
+        "offer_id": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Offer ID if applicable"
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "created",
+                "attempted",
+                "paid"
+            ],
+            "description": "Order status"
+        },
+        "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Payment attempt count"
+        },
+        "notes": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "type": "array",
+                    "maxItems": 0
+                }
+            ],
+            "description": "Notes - dict with data or empty array when empty"
+        },
+        "created_at": {
+            "type": "integer",
+            "minimum": 1000000000,
+            "description": "Unix timestamp, must be valid (after 2001)"
+        }
+    },
+    "additionalProperties": true
+}

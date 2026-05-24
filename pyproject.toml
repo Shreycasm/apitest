@@ -1,5 +1,5 @@
 [project]
-name = "razorpay-automation"
+name = "razorpay"
 version = "1.0.0"
 description = "Industry-level API automation testing for Razorpay"
 requires-python = ">=3.13"
@@ -29,8 +29,9 @@ markers = [
     "orders: Order related tests",
     "payments: Payment related tests",
     "refunds: Refund related tests",
+    "negative: Negative/error path tests",
 ]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers --alluredir=allure-results"
 log_cli = true
 log_cli_level = "INFO"
 
