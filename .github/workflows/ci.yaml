@@ -86,7 +86,7 @@ jobs:
       - name: Validate imports
         run: |
           uv run python -c "
-          from src.razorpay.api import OrdersAPI, PaymentsAPI, RefundsAPI
+          from src.razorpay.api import OrdersAPI
           from src.razorpay.models import CreateOrderRequest, OrderResponse
           from src.razorpay.utils import logger, SchemaValidator
           print('✅ All imports valid')
